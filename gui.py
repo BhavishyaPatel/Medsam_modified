@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 import sys
 import time
+import matplotlib
+matplotlib.use('Qt5Agg') # This is the critical line, placed before PyQt5 imports
+
 from PyQt5.QtGui import (
     QBrush,
     QPainter,
     QPen,
     QPixmap,
     QKeySequence,
-    QPen,
-    QBrush,
     QColor,
     QImage,
 )
@@ -149,7 +150,7 @@ class Window(QWidget):
         self.view = QGraphicsView()
         self.view.setRenderHint(QPainter.Antialiasing)
 
-        pixmap = self.load_image()
+        self.load_image()
 
         vbox = QVBoxLayout(self)
         vbox.addWidget(self.view)
@@ -198,8 +199,9 @@ class Window(QWidget):
         )
 
         if file_path is None or len(file_path) == 0:
-            print("No image path specified, plz select an image")
-            exit()
+            print("No image path specified, using default.")
+            # Use a default image path if none is selected
+            file_path = "assets/img_demo.png" # Or handle this case as you see fit
 
         img_np = io.imread(file_path)
         if len(img_np.shape) == 2:
@@ -281,12 +283,12 @@ class Window(QWidget):
         H, W, _ = self.img_3c.shape
         box_np = np.array([[xmin, ymin, xmax, ymax]])
         # print("bounding box:", box_np)
-        box_1024 = box_np / np.array([W, H, W, H]) * 1024
+        box_1024 = box_np / np.array() * 1024
 
         sam_mask = medsam_inference(medsam_model, self.embedding, box_1024, H, W)
 
         self.prev_mask = self.mask_c.copy()
-        self.mask_c[sam_mask != 0] = colors[self.color_idx % len(colors)]
+        self.mask_c[sam_mask!= 0] = colors[self.color_idx % len(colors)]
         self.color_idx += 1
 
         bg = Image.fromarray(self.img_3c.astype("uint8"), "RGB")
@@ -297,8 +299,12 @@ class Window(QWidget):
         self.bg_img = self.scene.addPixmap(np2pixmap(np.array(img)))
 
     def save_mask(self):
-        out_path = f"{self.image_path.split('.')[0]}_mask.png"
-        io.imsave(out_path, self.mask_c)
+        if self.image_path:
+            out_path = f"{self.image_path.split('.')}_mask.png"
+            io.imsave(out_path, self.mask_c)
+            print(f"Mask saved to {out_path}")
+        else:
+            print("No image loaded to save mask for.")
 
     @torch.no_grad()
     def get_embeddings(self):
@@ -308,7 +314,7 @@ class Window(QWidget):
         ).astype(np.uint8)
         img_1024 = (img_1024 - img_1024.min()) / np.clip(
             img_1024.max() - img_1024.min(), a_min=1e-8, a_max=None
-        )  # normalize to [0, 1], (H, W, 3)
+        )  # normalize to , (H, W, 3)
         # convert the shape to (3, H, W)
         img_1024_tensor = (
             torch.tensor(img_1024).float().permute(2, 0, 1).unsqueeze(0).to(device)
